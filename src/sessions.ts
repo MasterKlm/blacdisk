@@ -1,0 +1,103 @@
+import { Entry } from '@napi-rs/keyring';
+import { checkBillingStatus, discoverEndpoints } from './auth.ts';
+import chalk from 'chalk';
+
+const SERVICE = 'blacdisk';
+
+interface StoredSession {
+  access_token: string;
+  refresh_token: string;
+  expires_in: number;
+  issued_at: number; // Date.now() at save time
+}
+
+// Only what login actually returns before we strip id_token.
+// Deliberately no index signature here -- adding [key: string]: unknown
+// makes TS require the caller's type to *also* declare an index signature
+// to be assignable, which AuthTokenResponse doesn't (and doesn't need to).
+// Extra fields on whatever's passed in are still accepted at runtime;
+// they're just not required to be declared for the assignment to type-check.
+interface IncomingTokens {
+  access_token: string;
+  refresh_token: string;
+  expires_in: number;
+  id_token?: string; // accepted but never persisted
+}
+
+export function saveTokens(tokens: IncomingTokens) {
+  // id_token (and anything else) is intentionally dropped — only these three get persisted
+  new Entry(SERVICE, 'access_token').setPassword(tokens.access_token);
+  new Entry(SERVICE, 'refresh_token').setPassword(tokens.refresh_token);
+  new Entry(SERVICE, 'meta').setPassword(
+    JSON.stringify({ expires_in: tokens.expires_in, issued_at: Date.now() })
+  );
+}
+
+export function loadTokens(): StoredSession | null {
+  try {
+    const access_token = new Entry(SERVICE, 'access_token').getPassword();
+    const refresh_token = new Entry(SERVICE, 'refresh_token').getPassword();
+    const metaRaw = new Entry(SERVICE, 'meta').getPassword();
+
+    if (!access_token || !refresh_token || !metaRaw) return null;
+
+    const { expires_in, issued_at } = JSON.parse(metaRaw);
+    return { access_token, refresh_token, expires_in, issued_at };
+  } catch {
+    return null;
+  }
+}
+
+export function clearTokens() {
+  for (const key of ['access_token', 'refresh_token', 'meta']) {
+    try {
+      new Entry(SERVICE, key).deletePassword();
+    } catch {
+      // no-op if nothing stored under this key
+    }
+  }
+}
+
+const EXPIRY_BUFFER_MS = 30_000; // refresh 30s before actual expiry, avoid edge-of-window failures
+
+export async function getValidAccessToken(): Promise<string | null> {
+  const session = loadTokens();
+  if (!session) return null;
+
+  const expiresAt = session.issued_at + session.expires_in * 1000;
+  const stillValid = Date.now() < expiresAt - EXPIRY_BUFFER_MS;
+
+  if (stillValid) return session.access_token;
+
+  // expired — try refreshing
+  try {
+    //@ts-ignore
+    const config = await discoverEndpoints(!process.env.n_ISSUER_URL);
+    const res = await fetch(config.token_endpoint, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      //@ts-ignore
+      body: new URLSearchParams({
+        grant_type: 'refresh_token',
+        refresh_token: session.refresh_token,
+        client_id: process.env.CLERK_OAUTH_CLIENT_ID,
+      }),
+    });
+
+    if (!res.ok) {
+      clearTokens();
+      return null;
+    }
+
+    const fresh = await res.json();
+    saveTokens(fresh);
+    return fresh.access_token;
+  } catch {
+    clearTokens();
+    return null;
+  }
+}
+
+export async function isLoggedIn(): Promise<boolean> {
+  return (await getValidAccessToken()) !== null;
+}

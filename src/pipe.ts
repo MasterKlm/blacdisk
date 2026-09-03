@@ -1,0 +1,567 @@
+
+import * as pty from 'node-pty';
+//import { render } from 'ink';
+import { calcPercentageChanged, getClaudeImageInputTokens, getClaudeTextFileInputTokens, getClaudeTextInputTokens, getFileContent, getPsuedoRandomIntInclusive, sleep } from './utils.ts'
+import { MODELS } from './configureClaudeSession.ts';
+import chalk from 'chalk';
+import inquirer from 'inquirer';
+import { createSpinner } from "nanospinner";
+import { model } from './base.ts';
+import * as child_process from "child_process";
+import { spawn } from 'cross-spawn';
+import { fileURLToPath } from "url";
+import * as path from "path";
+import * as fs from "fs";
+import * as os from "os";
+import { resolveExecutablePath } from './resolveExecutable.ts';
+import { STRICT_SYSTEM_PROMPT } from './sys.ts';
+import { configureClaudeSession } from './configureClaudeSession.ts';
+import { getCurrentUserId } from './auth.ts';
+import { getValidAccessToken } from './sessions.ts';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const curretOSPlatformName = os.platform() == 'win32' ? 'windows' : os.platform() == 'darwin' ? 'macos' : 'linux';
+const currentWorkingDir = process.cwd();
+let isClaudeCodeAvailable : any | boolean = false;
+
+const spinner = createSpinner();
+
+function getPlatformTag(): string {
+  const platform = os.platform(); // 'win32' | 'linux' | 'darwin' | ...
+  const arch = os.arch();          // 'x64' | 'arm64' | ...
+
+  if (platform === "win32" && arch === "x64") return "win32-x64";
+  if (platform === "linux" && arch === "x64") return "linux-x64";
+  if (platform === "darwin" && arch === "arm64") return "darwin-arm64";
+
+  // No fallback guess — running the wrong native binary silently is worse
+  // than failing loudly here.
+  throw new Error(
+    `blackdisk has no prebuilt executable for ${platform}/${arch}. ` +
+    `Supported: win32-x64, linux-x64, darwin-arm64.`
+  );
+}
+
+function getExecutableName(): string {
+  // The folder keeps the "blacdisk" typo; the file inside is spelled
+  // correctly, with the .exe extension only on Windows.
+  return os.platform() === "win32" ? "blackdisk.exe" : "blackdisk";
+}
+
+const executablePath = resolveExecutablePath();
+
+
+async function selectContextWithGemini(prompt:string, allPaths:string[]) {
+  // Provide a prompt that contains text
+  
+
+  // To generate text output, call generateContent with the text input
+  const systemPrompt = "Based on this prompt and these files which are in the current directory, please provide only the file paths of files that are relevant to the prompt. Keep it short only the paths in the form of a list seperated by commas. Do not provide any other text or explanation. If no files are relevant, return an empty string.";
+  const fullPrompt = systemPrompt + "Prompt: " + prompt + " Files/Folder Paths: " + allPaths.join(', ');
+  const result = await model.generateContent(fullPrompt);
+
+  const response = result.response;
+  const text = response.text();
+  const arr = text.split(',').map(item => item.trim()).filter(item => item.length > 0);
+  return arr;
+}
+
+function getAllPaths(maxDepth = Infinity, currentDir = process.cwd(), currentDepth = 1) {
+  let paths : string[] = [];
+
+  // Read directory entries with file type details. Filter out .git folder
+  const entries = fs.readdirSync(currentDir, { withFileTypes: true }).filter(
+    entry => entry.name !== '.git' && entry.name !== 'node_modules' && entry.name !== 'blackdisk' && entry.name !== '.vscode'
+  );
+
+  for (const entry of entries) {
+    const fullPath = path.join(currentDir, entry.name);
+    paths.push(fullPath);
+
+    // Recurse into subdirectories if under max depth
+    if (entry.isDirectory() && currentDepth < maxDepth) {
+      const subPaths = getAllPaths(maxDepth, fullPath, currentDepth + 1);
+      paths = paths.concat(subPaths);
+    }
+  }
+
+  return paths;
+}
+
+
+async function askToInstallClaudeCodeCli() {
+  process.stdin.resume();
+  console.log(chalk.yellow(`\nClaude Code CLI is not installed.`));
+  
+  const shouldInstallCliAnswer = await inquirer.prompt({
+    name: 'confirm_cli_install',
+    type: 'input',
+    message: `Would you like to install claude code cli for ${curretOSPlatformName}? [y/n]`,
+    default() {
+      return 'y';
+    }
+  });
+
+  const shouldInstallCli = shouldInstallCliAnswer.confirm_cli_install.toLowerCase() === 'y';
+  
+  if (!shouldInstallCli) {
+    //process.exit(1);
+    isClaudeCodeAvailable = false;
+  }
+
+  // Wrap installProcess in a Promise so `await` actually blocks until npm finishes
+  return new Promise((resolve) => {
+    const installProcess = spawn('npm', ['install', '-g', '@anthropic-ai/claude-code'], {
+      stdio: 'ignore',
+    });
+
+    //@ts-ignore
+    spinner.start({ text: 'Installing Claude Code CLI...', color: 'blue' });
+
+    installProcess.on('close', (installExitCode:number) => {
+      if (installExitCode === 0) {
+      //@ts-ignore
+        spinner.success({ text: 'Claude Code CLI installed successfully.', color: 'green' });
+        isClaudeCodeAvailable = true;
+        console.log(chalk.blue(`\nOpening Claude Code. Log in to Claude Code. Cancel and try Blacdisk again...`));
+        spinner.stop();
+        resolve(true);
+        
+      } else {
+      //@ts-ignore
+        spinner.error({ text: `Failed to install Claude Code CLI. Exit code: ${installExitCode}`, color: 'red' });
+        isClaudeCodeAvailable = false;
+        process.exit(1);
+        
+      }
+    });
+
+    installProcess.on('error', (err:any) => {
+      //@ts-ignore
+      spinner.error({ text: `Failed to launch npm: ${err.message}`, color: 'red' });
+      isClaudeCodeAvailable = false;
+      process.exit(1);
+    });
+  });
+}
+
+function openClaudeCodeCli() {
+  return new Promise((resolve, reject) => {
+    const claudeProcess = spawn('claude', [], {
+      stdio: 'inherit',
+    });
+
+    claudeProcess.on('error', (err:any) => {
+      reject(err);
+    });
+
+    claudeProcess.on('close', (code:number) => {
+      resolve(code);
+    });
+  });
+}
+
+function runSession(ptyProcess: pty.IPty, fullPrompt: string): Promise<string> {
+  return new Promise((resolve, reject) => {
+    
+    let outputBuffer = '';
+    let isShuttingDown = false;
+    let promptSent = false;
+    let idleTimer: NodeJS.Timeout | null = null;
+    let cancelled = false;
+
+    const IDLE_MS = 1200;
+    const PROMPT_SEND_DELAY_MS = 4300;
+
+    const stripAnsi = (str: string) => str.replace(/\x1B\[[0-9;]*[a-zA-Z]/g, '');
+
+    if (process.stdin.isTTY) {
+      process.stdin.setRawMode(true);
+    }
+    process.stdin.resume();
+
+    const cleanupTerminal = () => {
+      process.stdin.removeListener('data', onUserInput);
+      if (process.stdin.isTTY) {
+        process.stdin.setRawMode(false);
+      }
+      process.stdin.pause();
+      console.clear();
+    };
+
+    const onUserInput = (data: Buffer) => {
+      const inputStr = data.toString();
+
+      // Handle Ctrl+C manually — kill the spawned CLI, return control to
+      // this process's own terminal (the "main" one), not exit entirely.
+      if (inputStr === '\x03') {
+        cancelled = true;
+        if (idleTimer) clearTimeout(idleTimer);
+
+        // Ask the pty process to terminate. SIGHUP/SIGTERM lets it clean up
+        // its own raw-mode/alt-screen state before it dies, which avoids
+        // leaving the real terminal in a broken state afterward.
+        try {
+          ptyProcess.kill();
+        } catch {
+          // process may already be gone
+        }
+
+        // Don't cleanupTerminal() here yet — let onExit do it once the
+        // child actually confirms it's dead, so we don't race its own
+        // terminal-restoring output.
+        return;
+      }
+
+      // Drop mouse tracking / trackpad sequences (SGR 1006 and X10 formats)
+      if (/\x1B\[<[0-9;]+[mM]/.test(inputStr) || /\x1B\[M/.test(inputStr)) {
+        return;
+      }
+
+      ptyProcess.write(inputStr);
+    };
+    process.stdin.on('data', onUserInput);
+
+    const scheduleIdleCheck = () => {
+      if (idleTimer) clearTimeout(idleTimer);
+      if (!promptSent || isShuttingDown) return;
+
+      idleTimer = setTimeout(() => {
+        const cleanBuffer = stripAnsi(outputBuffer).trimEnd();
+        if (!cleanBuffer.endsWith('>')) return;
+
+        isShuttingDown = true;
+        console.log('\n[System]: Task complete. Closing session...');
+        ptyProcess.write('/exit\r');
+      }, IDLE_MS);
+    };
+
+    ptyProcess.onData((data: string) => {
+      outputBuffer += data;
+      process.stdout.write(data);
+
+      if (isShuttingDown || cancelled) return;
+
+      scheduleIdleCheck();
+    });
+
+    ptyProcess.onExit(({ exitCode }) => {
+      if (idleTimer) clearTimeout(idleTimer);
+      cleanupTerminal();
+
+      if (cancelled) {
+        console.log('Cancelled. Returned to main terminal.\n');
+        resolve(outputBuffer); // resolve (not reject) so the caller doesn't treat Ctrl+C as an error
+        return;
+      }
+
+      if (exitCode !== 0) {
+        reject(new Error(`Claude Code CLI exited with code ${exitCode}`));
+      } else {
+        resolve(outputBuffer);
+      }
+    });
+
+    setTimeout(() => {
+      ptyProcess.write(fullPrompt + "\r");
+      promptSent = true;
+      scheduleIdleCheck();
+    }, PROMPT_SEND_DELAY_MS);
+  });
+}
+
+
+export async function runBlacDiskPipeline(prompt: string){
+  try {
+      spinner.start("Collecting Context...")
+      const allPaths = getAllPaths();
+      let selectedPaths : string[] = [];
+      if(allPaths.length > 0){
+       selectedPaths = await selectContextWithGemini(prompt, allPaths);
+      }
+      
+      //selectedPaths = allPaths.filter((val, index)=> (index > 420 && index < 430));
+
+      /*console.log(`SelectedPath Length: ${allPaths.length}`);
+      console.log(chalk.green("[DEBUG TS] Selected Paths ontext: "));
+      selectedPaths.map((filePath)=>{
+        console.log(chalk.green("[DEBUG TS] ", filePath));
+      });*/
+
+      spinner.stop();
+
+
+      const { selectedModel, effort } = await configureClaudeSession();
+
+      const promptTokenCount = await getClaudeTextInputTokens(prompt, selectedModel);
+
+      const originalTokenCounts = await Promise.all(
+        selectedPaths.map(path => getClaudeTextFileInputTokens(path, selectedModel))
+      );
+
+      let originalFileInputTokens = 0;
+
+      originalFileInputTokens = originalTokenCounts.reduce((sum, count) => sum + count, 0);
+
+      const child = child_process.spawn(executablePath, [], {
+        cwd: process.cwd(),
+        env: process.env,
+        stdio: ["pipe", "pipe", "pipe"], // pass stdin/stdout/stderr straight through, no TTY needed
+      });
+
+
+
+      let pathSent = false;
+      let promptSent = false;
+      let clerkUserIdSent = false;
+      let accessTokenSent =  false;
+      let claudeModelTagSent =  false;
+      let tokenTagSent = false;
+      
+      const clerkUserId = await getCurrentUserId()
+
+      const access_token = await getValidAccessToken();
+     
+      spinner.stop();
+      let outputBuffer = "";
+
+      child.stdout.on("data", (output: Buffer) => {
+        process.stdout.write(output);
+        outputBuffer += output.toString();
+
+        if(!clerkUserIdSent && clerkUserId && !promptSent){
+          child.stdin.write(`${clerkUserId}\n`);
+          clerkUserIdSent = true;
+          return;
+        }
+
+        if(!accessTokenSent && access_token && clerkUserIdSent && !claudeModelTagSent){
+          child.stdin.write(`${access_token}\n`);
+          accessTokenSent = true;
+          return;
+        }
+
+        if(!claudeModelTagSent && clerkUserIdSent && accessTokenSent){
+          child.stdin.write(`${selectedModel}\n`);
+          claudeModelTagSent = true;
+          return;
+        }
+
+
+        if (!promptSent && !tokenTagSent && clerkUserIdSent && accessTokenSent && claudeModelTagSent  && outputBuffer.includes("Calculating Tokens...")) {
+          child.stdin.write(`${originalFileInputTokens + promptTokenCount}\n`);
+          tokenTagSent = true;
+          return;
+        }
+        if (!promptSent && tokenTagSent && clerkUserIdSent && accessTokenSent && claudeModelTagSent && outputBuffer.includes("Analysing Context")) {
+          child.stdin.write(`${prompt}\n`);
+          promptSent = true;
+          return;
+        }
+
+        if (promptSent && tokenTagSent && !pathSent) {
+      
+          child.stdin.write(`${(selectedPaths.length > 0 && selectedPaths.length < 2) ? selectedPaths[0] : selectedPaths.join(', ')}\n`);
+      
+          pathSent = true;
+          return;
+        }
+     
+
+
+
+      });
+
+      child.stderr.on("data", (chunk: Buffer) => {
+        process.stderr.write("\n" + chunk); // forward blackdisk's own stderr straight through
+      });
+
+
+      child.on("error", (err:any)=>{
+        console.log(chalk.red(err));
+        process.exitCode = 1;
+      });
+
+      const tokenReductionMessages = ["Banishing Tokens...", "Reducing Tokens...", "Shrinking Tokens...", "Blacdisk Compressing Tokens...", "Tokens are crossing the event horizon...", "Swallowing Tokens..."];
+      let tokenReductionMessage = tokenReductionMessages[getPsuedoRandomIntInclusive(0, tokenReductionMessages.length - 1)] + "\n";
+      spinner.start(tokenReductionMessage);
+
+
+   
+         // FIX 1: Call cleanup() then process.exit() so the event loop
+      // actually terminates instead of hanging after the child finishes.
+      child.on("close", async (code: number | null, signal: string | null) => {
+
+   
+        
+        if (code !== 0) {
+          console.error(chalk.red(`\nBlackdisk exited with error code ${code ?? `killed by signal ${signal}`}`));
+          process.exitCode = code ?? 1;
+          return; // <-- this was missing. Don't touch output files from a process that failed.
+        } 
+       
+        let isLingFileContent = "0"
+        try{
+          if(fs.existsSync("./blackdisk/build/isLing.txt"))
+            isLingFileContent = getFileContent("./blackdisk/build/isLing.txt");
+        }
+        catch(err:any){
+          console.log(chalk.red(err.message));
+        }
+        //const isLing = isLingFileContent == "1";
+        const useOriginal = isLingFileContent == "2";
+        let postProcessPrompt : string = "";
+
+        if(fs.existsSync("./blackdisk/build/isLing.txt"))
+          postProcessPrompt = getFileContent(currentWorkingDir + "/blackdisk/build/prompt_message.txt");
+
+        let fileContextDirectives = "";
+        let selectedFilePathsDirectives = "";
+        let fileContexts : string[] = [];
+
+        
+
+        if(!useOriginal){
+          
+          /*if(isLing){
+            fileContexts = ["./blackdisk/build/prompt.txt"];
+            //@ts-ignore
+            postProcessTokens = await getClaudeTextFileInputTokens(fileContexts[0], ClaudeModels.sonnet_5);
+
+            console.log(chalk.green("[DEBUG TS] Tokens: ", postProcessTokens + promptTokenCount + systemPromptTokens));
+            const percentageChanged = calcPercentageChanged(postProcessTokens + promptTokenCount + systemPromptTokens, originalFileInputTokens + promptTokenCount + systemPromptTokens);
+            console.log(chalk.blue("Claude Actual Percentage Changed: ", percentageChanged + "%"));
+          }*/
+
+          fileContexts = getAllPaths(1, process.cwd() + "\\blackdisk\\ctx\\");
+
+        }
+        else{
+          fileContexts = selectedPaths;
+        }
+ 
+        
+
+        fileContexts.map((filePath) => fileContextDirectives += `@${filePath} `);
+        selectedPaths.map((filePath) => selectedFilePathsDirectives += `#${filePath} `);
+        // Spawn the Claude CLI as a new process
+        
+
+        let isPrompting = false;
+
+        // Passing Prompt to claude
+        //const claudeProcess = spawn('claude', ['-p', '--permission-mode acceptEdits', fileContextDirectives +  postProcessPrompt], {
+        //  stdio: 'inherit', // This directly connects Claude's input/output to your terminal
+        //  shell: false,  
+        //});
+
+        /*const claudeProcess = spawn('claude', [
+          '--model', 'claude-sonnet-5',
+          '--permission-mode', 'acceptEdits' // Auto-approves file modifications
+        ], {
+          stdio:['pipe', 'pipe', 'inherit'],
+          shell: false
+        });*/
+
+        spinner.stop();
+        let claudeProcess: pty.IPty;
+
+        spinner.stop();
+        //console.clear();
+
+
+        // 2. Build your dynamic arguments array based on the choices
+        const claudeArgs = ['--model', selectedModel, '--effort', effort];
+
+        const isWindows = process.platform === 'win32';
+        const claudeCommand = isWindows ? 'claude.cmd' : 'claude';
+        try {
+          // node-pty throws immediately here if 'claude' is not installed
+          claudeProcess = pty.spawn(claudeCommand, [...claudeArgs, '--permission-mode', 'acceptEdits'], {
+            name: 'xterm-color',
+            cols: process.stdout.columns || 80,
+            rows: process.stdout.rows || 30,
+            cwd: process.cwd(),
+            env: process.env as Record<string, string>
+          });
+          
+        } catch (err: any) {
+          // Check for both ENOENT (Mac/Linux) and "File not found" (Windows node-pty specific)
+          if (err.message.includes("ENOENT") || err.message.includes("File not found")) {
+            isPrompting = true;
+            isClaudeCodeAvailable = false;
+            
+            // Await your custom installation flow
+            await askToInstallClaudeCodeCli();
+            await sleep(3400);
+            await openClaudeCodeCli();
+            isClaudeCodeAvailable = true;
+            
+            // Note: You will need to recursively call your function here or restart the spawn 
+            // process so it actually boots up Claude after installing!
+            return; 
+          } else {
+            console.error(chalk.red('\nError starting Claude CLI:'), err.message);
+            return;
+          }
+        }
+        
+        //passed claude does not exist check
+        isClaudeCodeAvailable = true;
+
+        if(isClaudeCodeAvailable){
+
+
+       
+          const fullPrompt = `${STRICT_SYSTEM_PROMPT}${postProcessPrompt}.  NB! Strictly use these files as context as specified in the system instructions: ${fileContextDirectives} ${selectedFilePathsDirectives}`;
+          const fullPromptWithYapperSkill = `/yapper ${STRICT_SYSTEM_PROMPT}${postProcessPrompt}.  NB! Strictly use these files as context as specified in the system instructions: ${fileContextDirectives} ${selectedFilePathsDirectives}`;
+          const useOriginalProptStr = `/yapper ${prompt}`;
+          const fullTextPromptTokens = await getClaudeTextInputTokens(fullPromptWithYapperSkill, selectedModel);
+          const postProcessFileInputTokens = useOriginal ? originalFileInputTokens : await getClaudeImageInputTokens(fileContexts, selectedModel);
+          let claudeInputPrompt : string;
+          console.clear();
+
+          const beforeTokens = originalFileInputTokens + promptTokenCount;
+          const afterTokens = postProcessFileInputTokens + fullTextPromptTokens;
+          console.log("Before: ", beforeTokens, " tokens | ", "After: ", afterTokens, " tokens");
+          
+          const percentageChanged = calcPercentageChanged(postProcessFileInputTokens + (useOriginal ? promptTokenCount : fullTextPromptTokens), originalFileInputTokens + promptTokenCount);
+          console.log(chalk.greenBright("Claude Token Percentage Saved: ", Math.round(percentageChanged) + "%"));
+          
+          if(beforeTokens < afterTokens){
+            claudeInputPrompt = useOriginalProptStr; 
+            console.log(chalk.yellow("Unable to save you input tokens, only output tokens can be saved. Using claude code normally."))
+          }
+          else{
+            claudeInputPrompt = fullPromptWithYapperSkill
+          }
+          spinner.start("Opening Cluade Code...")
+          await sleep(3000);
+          spinner.stop();
+          console.clear();
+          await runSession(claudeProcess, claudeInputPrompt);
+
+
+        }
+
+        
+
+        // When Claude finally finishes, exit the main Node script
+        claudeProcess.onExit(({ exitCode }) => {
+          if (!isPrompting) {
+            process.exit(exitCode ?? 0);
+          } 
+        });
+
+
+        
+        
+      });
+
+
+  } catch (err:any) {
+      console.error(chalk.red('\nUnexpected error:'), err?.message ?? err);
+      process.exit(1);
+  }
+}

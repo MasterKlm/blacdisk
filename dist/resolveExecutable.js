@@ -1,0 +1,42 @@
+import path from 'node:path';
+import fs from 'node:fs';
+import { createRequire } from 'node:module';
+const require = createRequire(import.meta.url);
+// Maps process.platform + process.arch to { npm package name, binary filename }.
+// Extend this if you add more targets to your build matrix later.
+const PLATFORM_MAP = {
+    'win32-x64': { pkg: '@masterklm/blacdisk-win32-x64', bin: 'blackdisk.exe' },
+    'linux-x64': { pkg: '@masterklm/blacdisk-linux-x64', bin: 'blackdisk' },
+    'darwin-arm64': { pkg: '@masterklm/blacdisk-darwin-arm64', bin: 'blackdisk' },
+};
+export function resolveExecutablePath() {
+    const key = `${process.platform}-${process.arch}`;
+    const target = PLATFORM_MAP[key];
+    if (!target) {
+        throw new Error(`blacdisk has no prebuilt binary for ${key}. ` +
+            `Supported: ${Object.keys(PLATFORM_MAP).join(', ')}.`);
+    }
+    let pkgDir;
+    try {
+        // Resolves to the platform package's package.json, then we take its
+        // directory -- this works regardless of exact node_modules nesting,
+        // since it goes through Node's real module resolution rather than a
+        // hardcoded relative path.
+        const pkgJsonPath = require.resolve(`${target.pkg}/package.json`);
+        pkgDir = path.dirname(pkgJsonPath);
+    }
+    catch {
+        throw new Error(`Could not find optional dependency "${target.pkg}". ` +
+            `This usually means npm skipped it during install -- try reinstalling ` +
+            `with "npm install --include=optional", or check that your platform ` +
+            `(${key}) is actually supported.`);
+    }
+    const exePath = path.join(pkgDir, target.bin);
+    if (!fs.existsSync(exePath)) {
+        throw new Error(`Expected binary not found at ${exePath}. The "${target.pkg}" package ` +
+            `may be corrupted or built incorrectly -- check its "files" field ` +
+            `actually includes bin/${target.bin}.`);
+    }
+    return exePath;
+}
+//# sourceMappingURL=resolveExecutable.js.map
