@@ -1,0 +1,49 @@
+{
+  "name": "blacdisk",
+  "version": "1.0.1",
+  "description": "Save money on Claude Code Tokens. Stop Burning usage quickly. The Blacdisk CLI sits between your code and claude, uses proven and new techniques, such as code image context, filepath context compression, read tool limiting and skills to shrink input tokens up to 80%. All in one tool.",
+  "license": "ISC",
+  "author": "",
+  "type": "module",
+  "files": [
+    "dist",
+    ".env"
+  ],
+  "bin": {
+    "blacdisk": "./dist/index.js"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build": "tsc",
+    "type-check": "tsc --noEmit",
+    "start": "node dist/index.js",
+    "prepublishOnly": "npm run build"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.116.0",
+    "@napi-rs/keyring": "^1.3.0",
+    "chalk": "^5.6.2",
+    "commander": "^15.0.0",
+    "cross-spawn": "^7.0.6",
+    "dotenv": "^17.4.2",
+    "figlet": "^1.11.4",
+    "firebase": "^12.17.1",
+    "ink": "^7.0.5",
+    "inquirer": "^9.3.8",
+    "nanospinner": "^1.2.2",
+    "node-pty": "^1.1.0",
+    "open": "^11.0.1",
+    "react": "^19.2.6"
+  },
+  "devDependencies": {
+    "@types/cross-spawn": "^6.0.6",
+    "@types/inquirer": "^9.0.10",
+    "@types/node": "^20.0.0",
+    "typescript": "^5.9.0"
+  },
+  "optionalDependencies": {
+    "@masterklm/blacdisk-darwin-arm64": "1.0.0",
+    "@masterklm/blacdisk-linux-x64": "1.0.0",
+    "@masterklm/blacdisk-win32-x64": "1.0.0"
+  }
+}
