@@ -1,6 +1,6 @@
 {
   "name": "@masterklm/blacdisk-linux-x64",
-  "version": "1.0.4",
+  "version": "1.0.3",
   "os": ["linux"],
   "cpu": ["x64"],
   "files": ["blackdisk", "assets/**/*", "SKILLS/**/*"]
