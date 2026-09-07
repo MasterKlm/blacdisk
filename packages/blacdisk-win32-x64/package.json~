@@ -1,6 +1,6 @@
 {
   "name": "@masterklm/blacdisk-win32-x64",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "os": ["win32"],
   "cpu": ["x64"],
   "files": ["blackdisk.exe", "assets/**/*", "SKILLS/**/*"]
