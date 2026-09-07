@@ -137,7 +137,7 @@ function runSession(ptyProcess, fullPrompt) {
         let idleTimer = null;
         let cancelled = false;
         const IDLE_MS = 1200;
-        const PROMPT_SEND_DELAY_MS = 4300;
+        const PROMPT_SEND_DELAY_MS = 300;
         const stripAnsi = (str) => str.replace(/\x1B\[[0-9;]*[a-zA-Z]/g, '');
         if (process.stdin.isTTY) {
             process.stdin.setRawMode(true);

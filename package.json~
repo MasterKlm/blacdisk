@@ -1,6 +1,6 @@
 {
   "name": "blacdisk",
-  "version": "1.0.5",
+  "version": "1.0.6",
   "description": "Save money on Claude Code Tokens. Stop Burning usage quickly. The Blacdisk CLI sits between your code and claude, uses proven and new techniques, such as code image context, filepath context compression, read tool limiting and skills to shrink input tokens up to 80%. All in one tool.",
   "license": "ISC",
   "author": "",
@@ -42,8 +42,8 @@
     "typescript": "^5.9.0"
   },
   "optionalDependencies": {
-    "@masterklm/blacdisk-darwin-arm64": "1.0.4",
-    "@masterklm/blacdisk-linux-x64": "1.0.4",
-    "@masterklm/blacdisk-win32-x64": "1.0.4"
+    "@masterklm/blacdisk-darwin-arm64": "1.0.5",
+    "@masterklm/blacdisk-linux-x64": "1.0.5",
+    "@masterklm/blacdisk-win32-x64": "1.0.5"
   }
 }
