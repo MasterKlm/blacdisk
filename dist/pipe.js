@@ -54,16 +54,44 @@ async function selectContextWithGemini(prompt, allPaths) {
     const arr = text.split(',').map(item => item.trim()).filter(item => item.length > 0);
     return arr;
 }
-function getAllPaths(maxDepth = Infinity, currentDir = process.cwd(), currentDepth = 1) {
+const DEFAULT_IGNORED_DIRS = new Set([
+    // VCS
+    '.git', '.svn', '.hg',
+    // Editors / IDEs
+    '.vscode', '.idea', '.vs',
+    // JS/TS / Node
+    'node_modules', 'dist', 'build', '.next', '.nuxt', '.turbo',
+    '.cache', 'coverage', '.parcel-cache', '.svelte-kit',
+    // Python
+    '__pycache__', '.venv', 'venv', 'env', '.tox', '.pytest_cache',
+    '.mypy_cache', 'site-packages', 'egg-info',
+    // C/C++
+    'cmake-build-debug', 'cmake-build-release', 'build', 'out',
+    'third_party', 'thirdparty', 'external', 'vendor',
+    'include', 'Debug', 'Release', 'x64', 'x86', 'CMakeFiles',
+    // Java / JVM
+    'target', '.gradle', '.mvn', 'bin', 'obj',
+    // Rust
+    'target',
+    // Go
+    'vendor',
+    // .NET
+    'bin', 'obj', 'packages',
+    // Package managers / lockfile dirs
+    '.pnpm-store', '.yarn', 'bower_components',
+    // Misc project-specific
+    'blackdisk',
+    // OS
+    '.DS_Store', 'Thumbs.db',
+]);
+function getAllPaths(maxDepth = Infinity, currentDir = process.cwd(), currentDepth = 1, ignoredDirs = DEFAULT_IGNORED_DIRS) {
     let paths = [];
-    // Read directory entries with file type details. Filter out .git folder
-    const entries = fs.readdirSync(currentDir, { withFileTypes: true }).filter(entry => entry.name !== '.git' && entry.name !== 'node_modules' && entry.name !== 'blackdisk' && entry.name !== '.vscode');
+    const entries = fs.readdirSync(currentDir, { withFileTypes: true }).filter(entry => !ignoredDirs.has(entry.name));
     for (const entry of entries) {
         const fullPath = path.join(currentDir, entry.name);
         paths.push(fullPath);
-        // Recurse into subdirectories if under max depth
         if (entry.isDirectory() && currentDepth < maxDepth) {
-            const subPaths = getAllPaths(maxDepth, fullPath, currentDepth + 1);
+            const subPaths = getAllPaths(maxDepth, fullPath, currentDepth + 1, ignoredDirs);
             paths = paths.concat(subPaths);
         }
     }

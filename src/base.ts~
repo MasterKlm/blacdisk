@@ -21,11 +21,13 @@ const appCheckCustomProvider = new CustomProvider({
     if (!accessToken) {
       throw new Error("Not logged in -- run `blacdisk` to login first.");
     }
+    console.log("Sending app check, access token: ", accessToken);
 
     const res = await fetch("https://www.blacdisk.com/api/app-check-token", {
       method: "POST",
       headers: { Authorization: `Bearer ${accessToken}` },
     });
+    console.log("Sent app check request");
 
     if (!res.ok) {
       throw new Error(`Failed to fetch App Check token: ${res.status}`);

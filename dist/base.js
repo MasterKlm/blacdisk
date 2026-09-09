@@ -1,7 +1,7 @@
 import { initializeApp } from "firebase/app";
-//import { getAnalytics } from "firebase/analytics";
-//import { initializeAppCheck, CustomProvider } from "firebase/app-check";
 import { getAI, getGenerativeModel, GoogleAIBackend } from "firebase/ai";
+import { initializeAppCheck, CustomProvider } from "firebase/app-check";
+import { getValidAccessToken } from "./sessions.js";
 const firebaseConfig = {
     apiKey: "AIzaSyBtg0EBTCnz3by1XpgYqwKVkKgUtV_mQBE",
     authDomain: "blacdisk.firebaseapp.com",
@@ -9,14 +9,28 @@ const firebaseConfig = {
     storageBucket: "blacdisk.firebasestorage.app",
     messagingSenderId: "6190346018",
     appId: "1:6190346018:web:fb33201b9c68aff6627f7b",
-    measurementId: "G-BMWW2PDP29"
+    measurementId: "G-BMWW2PDP29",
 };
-// Initialize Firebase
 const app = initializeApp(firebaseConfig);
+const appCheckCustomProvider = new CustomProvider({
+    getToken: async () => {
+        const accessToken = await getValidAccessToken();
+        if (!accessToken) {
+            throw new Error("Not logged in -- run `blacdisk` to login first.");
+        }
+        const res = await fetch("https://www.blacdisk.com/api/app-check-token", {
+            method: "POST",
+            headers: { Authorization: `Bearer ${accessToken}` },
+        });
+        if (!res.ok) {
+            throw new Error(`Failed to fetch App Check token: ${res.status}`);
+        }
+        const { token, expireTimeMillis } = await res.json();
+        return { token, expireTimeMillis };
+    },
+});
+initializeAppCheck(app, { provider: appCheckCustomProvider });
 const ai = getAI(app, { backend: new GoogleAIBackend() });
-// Create a `GenerativeModel` instance with a model that supports your use case.
-const model = getGenerativeModel(ai, { model: "gemini-3.6-flash" });
-//self.FIREBASE_APPCHECK_DEBUG_TOKEN = true;
-//const analytics = getAnalytics(app);
+const model = getGenerativeModel(ai, { model: "gemini-3.1-flash-lite" });
 export { model };
 //# sourceMappingURL=base.js.map
