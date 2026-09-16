@@ -67,28 +67,73 @@ async function selectContextWithGemini(prompt:string, allPaths:string[]) {
   return arr;
 }
 
-function getAllPaths(maxDepth = Infinity, currentDir = process.cwd(), currentDepth = 1) {
-  let paths : string[] = [];
+const DEFAULT_IGNORED_DIRS = new Set([
+  // VCS
+  '.git', '.svn', '.hg',
 
-  // Read directory entries with file type details. Filter out .git folder
+  // Editors / IDEs
+  '.vscode', '.idea', '.vs',
+
+  // JS/TS / Node
+  'node_modules', 'dist', 'build', '.next', '.nuxt', '.turbo',
+  '.cache', 'coverage', '.parcel-cache', '.svelte-kit',
+
+  // Python
+  '__pycache__', '.venv', 'venv', 'env', '.tox', '.pytest_cache',
+  '.mypy_cache', 'site-packages', 'egg-info',
+
+  // C/C++
+  'cmake-build-debug', 'cmake-build-release', 'build', 'out',
+  'third_party', 'thirdparty', 'external', 'vendor',
+  'include', 'Debug', 'Release', 'x64', 'x86', 'CMakeFiles',
+
+  // Java / JVM
+  'target', '.gradle', '.mvn', 'bin', 'obj',
+
+  // Rust
+  'target',
+
+  // Go
+  'vendor',
+
+  // .NET
+  'bin', 'obj', 'packages',
+
+  // Package managers / lockfile dirs
+  '.pnpm-store', '.yarn', 'bower_components',
+
+  // Misc project-specific
+  'blackdisk',
+
+  // OS
+  '.DS_Store', 'Thumbs.db',
+]);
+
+
+function getAllPaths(
+  maxDepth = Infinity,
+  currentDir = process.cwd(),
+  currentDepth = 1,
+  ignoredDirs: Set<string> = DEFAULT_IGNORED_DIRS
+): string[] {
+  let paths: string[] = [];
+
   const entries = fs.readdirSync(currentDir, { withFileTypes: true }).filter(
-    entry => entry.name !== '.git' && entry.name !== 'node_modules' && entry.name !== 'blackdisk' && entry.name !== '.vscode'
+    entry => !ignoredDirs.has(entry.name)
   );
 
   for (const entry of entries) {
     const fullPath = path.join(currentDir, entry.name);
     paths.push(fullPath);
 
-    // Recurse into subdirectories if under max depth
     if (entry.isDirectory() && currentDepth < maxDepth) {
-      const subPaths = getAllPaths(maxDepth, fullPath, currentDepth + 1);
+      const subPaths = getAllPaths(maxDepth, fullPath, currentDepth + 1, ignoredDirs);
       paths = paths.concat(subPaths);
     }
   }
 
   return paths;
 }
-
 
 async function askToInstallClaudeCodeCli() {
   process.stdin.resume();

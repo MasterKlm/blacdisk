@@ -1,4 +1,3 @@
-
 import * as pty from 'node-pty';
 //import { render } from 'ink';
 import { calcPercentageChanged, getClaudeImageInputTokens, getClaudeTextFileInputTokens, getClaudeTextInputTokens, getFileContent, getPsuedoRandomIntInclusive, sleep } from './utils.ts'
@@ -35,8 +34,6 @@ function getPlatformTag(): string {
   if (platform === "linux" && arch === "x64") return "linux-x64";
   if (platform === "darwin" && arch === "arm64") return "darwin-arm64";
 
-  // No fallback guess — running the wrong native binary silently is worse
-  // than failing loudly here.
   throw new Error(
     `blackdisk has no prebuilt executable for ${platform}/${arch}. ` +
     `Supported: win32-x64, linux-x64, darwin-arm64.`
@@ -44,8 +41,6 @@ function getPlatformTag(): string {
 }
 
 function getExecutableName(): string {
-  // The folder keeps the "blacdisk" typo; the file inside is spelled
-  // correctly, with the .exe extension only on Windows.
   return os.platform() === "win32" ? "blackdisk.exe" : "blackdisk";
 }
 
@@ -53,10 +48,6 @@ const executablePath = resolveExecutablePath();
 
 
 async function selectContextWithGemini(prompt:string, allPaths:string[]) {
-  // Provide a prompt that contains text
-  
-
-  // To generate text output, call generateContent with the text input
   const systemPrompt = "Based on this prompt and these files which are in the current directory, please provide only the file paths of files that are relevant to the prompt. Keep it short only the paths in the form of a list seperated by commas. Do not provide any other text or explanation. If no files are relevant, return an empty string.";
   const fullPrompt = systemPrompt + "Prompt: " + prompt + " Files/Folder Paths: " + allPaths.join(', ');
   const result = await model.generateContent(fullPrompt);
@@ -151,11 +142,9 @@ async function askToInstallClaudeCodeCli() {
   const shouldInstallCli = shouldInstallCliAnswer.confirm_cli_install.toLowerCase() === 'y';
   
   if (!shouldInstallCli) {
-    //process.exit(1);
     isClaudeCodeAvailable = false;
   }
 
-  // Wrap installProcess in a Promise so `await` actually blocks until npm finishes
   return new Promise((resolve) => {
     const installProcess = spawn('npm', ['install', '-g', '@anthropic-ai/claude-code'], {
       stdio: 'ignore',
@@ -240,27 +229,19 @@ function runSession(ptyProcess: pty.IPty, fullPrompt: string): Promise<string> {
       const inputStr = data.toString();
 
       // Handle Ctrl+C manually — kill the spawned CLI, return control to
-      // this process's own terminal (the "main" one), not exit entirely.
       if (inputStr === '\x03') {
         cancelled = true;
         if (idleTimer) clearTimeout(idleTimer);
 
-        // Ask the pty process to terminate. SIGHUP/SIGTERM lets it clean up
-        // its own raw-mode/alt-screen state before it dies, which avoids
-        // leaving the real terminal in a broken state afterward.
+       
         try {
           ptyProcess.kill();
         } catch {
-          // process may already be gone
         }
 
-        // Don't cleanupTerminal() here yet — let onExit do it once the
-        // child actually confirms it's dead, so we don't race its own
-        // terminal-restoring output.
         return;
       }
 
-      // Drop mouse tracking / trackpad sequences (SGR 1006 and X10 formats)
       if (/\x1B\[<[0-9;]+[mM]/.test(inputStr) || /\x1B\[M/.test(inputStr)) {
         return;
       }
@@ -298,8 +279,8 @@ function runSession(ptyProcess: pty.IPty, fullPrompt: string): Promise<string> {
 
       if (cancelled) {
         console.log('Cancelled. Returned to main terminal.\n');
-        resolve(outputBuffer); // resolve (not reject) so the caller doesn't treat Ctrl+C as an error
-        return;
+        resolve(outputBuffer);  
+ 	return;
       }
 
       if (exitCode !== 0) {
@@ -327,14 +308,6 @@ export async function runBlacDiskPipeline(prompt: string){
        selectedPaths = await selectContextWithGemini(prompt, allPaths);
       }
       
-      //selectedPaths = allPaths.filter((val, index)=> (index > 420 && index < 430));
-
-      /*console.log(`SelectedPath Length: ${allPaths.length}`);
-      console.log(chalk.green("[DEBUG TS] Selected Paths ontext: "));
-      selectedPaths.map((filePath)=>{
-        console.log(chalk.green("[DEBUG TS] ", filePath));
-      });*/
-
       spinner.stop();
 
 
@@ -353,7 +326,7 @@ export async function runBlacDiskPipeline(prompt: string){
       const child = child_process.spawn(executablePath, [], {
         cwd: process.cwd(),
         env: process.env,
-        stdio: ["pipe", "pipe", "pipe"], // pass stdin/stdout/stderr straight through, no TTY needed
+        stdio: ["pipe", "pipe", "pipe"], 
       });
 
 
@@ -420,7 +393,7 @@ export async function runBlacDiskPipeline(prompt: string){
       });
 
       child.stderr.on("data", (chunk: Buffer) => {
-        process.stderr.write("\n" + chunk); // forward blackdisk's own stderr straight through
+        process.stderr.write("\n" + chunk); 
       });
 
 
@@ -435,8 +408,6 @@ export async function runBlacDiskPipeline(prompt: string){
 
 
    
-         // FIX 1: Call cleanup() then process.exit() so the event loop
-      // actually terminates instead of hanging after the child finishes.
       child.on("close", async (code: number | null, signal: string | null) => {
 
    
@@ -444,8 +415,8 @@ export async function runBlacDiskPipeline(prompt: string){
         if (code !== 0) {
           console.error(chalk.red(`\nBlackdisk exited with error code ${code ?? `killed by signal ${signal}`}`));
           process.exitCode = code ?? 1;
-          return; // <-- this was missing. Don't touch output files from a process that failed.
-        } 
+          return; 
+	} 
        
         let isLingFileContent = "0"
         try{
@@ -470,16 +441,6 @@ export async function runBlacDiskPipeline(prompt: string){
 
         if(!useOriginal){
           
-          /*if(isLing){
-            fileContexts = ["./blackdisk/build/prompt.txt"];
-            //@ts-ignore
-            postProcessTokens = await getClaudeTextFileInputTokens(fileContexts[0], ClaudeModels.sonnet_5);
-
-            console.log(chalk.green("[DEBUG TS] Tokens: ", postProcessTokens + promptTokenCount + systemPromptTokens));
-            const percentageChanged = calcPercentageChanged(postProcessTokens + promptTokenCount + systemPromptTokens, originalFileInputTokens + promptTokenCount + systemPromptTokens);
-            console.log(chalk.blue("Claude Actual Percentage Changed: ", percentageChanged + "%"));
-          }*/
-
           fileContexts = getAllPaths(1, process.cwd() + "\\blackdisk\\ctx\\");
 
         }
@@ -491,30 +452,16 @@ export async function runBlacDiskPipeline(prompt: string){
 
         fileContexts.map((filePath) => fileContextDirectives += `@${filePath} `);
         selectedPaths.map((filePath) => selectedFilePathsDirectives += `#${filePath} `);
-        // Spawn the Claude CLI as a new process
         
 
         let isPrompting = false;
 
         // Passing Prompt to claude
-        //const claudeProcess = spawn('claude', ['-p', '--permission-mode acceptEdits', fileContextDirectives +  postProcessPrompt], {
-        //  stdio: 'inherit', // This directly connects Claude's input/output to your terminal
-        //  shell: false,  
-        //});
-
-        /*const claudeProcess = spawn('claude', [
-          '--model', 'claude-sonnet-5',
-          '--permission-mode', 'acceptEdits' // Auto-approves file modifications
-        ], {
-          stdio:['pipe', 'pipe', 'inherit'],
-          shell: false
-        });*/
-
+      
         spinner.stop();
         let claudeProcess: pty.IPty;
 
         spinner.stop();
-        //console.clear();
 
 
         // 2. Build your dynamic arguments array based on the choices
@@ -523,7 +470,6 @@ export async function runBlacDiskPipeline(prompt: string){
         const isWindows = process.platform === 'win32';
         const claudeCommand = isWindows ? 'claude.cmd' : 'claude';
         try {
-          // node-pty throws immediately here if 'claude' is not installed
           claudeProcess = pty.spawn(claudeCommand, [...claudeArgs, '--permission-mode', 'acceptEdits'], {
             name: 'xterm-color',
             cols: process.stdout.columns || 80,
@@ -538,14 +484,10 @@ export async function runBlacDiskPipeline(prompt: string){
             isPrompting = true;
             isClaudeCodeAvailable = false;
             
-            // Await your custom installation flow
             await askToInstallClaudeCodeCli();
             await sleep(3400);
             await openClaudeCodeCli();
             isClaudeCodeAvailable = true;
-            
-            // Note: You will need to recursively call your function here or restart the spawn 
-            // process so it actually boots up Claude after installing!
             return; 
           } else {
             console.error(chalk.red('\nError starting Claude CLI:'), err.message);
@@ -553,7 +495,6 @@ export async function runBlacDiskPipeline(prompt: string){
           }
         }
         
-        //passed claude does not exist check
         isClaudeCodeAvailable = true;
 
         if(isClaudeCodeAvailable){
@@ -593,7 +534,6 @@ export async function runBlacDiskPipeline(prompt: string){
 
         
 
-        // When Claude finally finishes, exit the main Node script
         claudeProcess.onExit(({ exitCode }) => {
           if (!isPrompting) {
             process.exit(exitCode ?? 0);

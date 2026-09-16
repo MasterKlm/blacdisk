@@ -1,2 +1,9 @@
 node_modules/
 build/
+# Vim / GVim temporary files
+*.swp
+*.swo
+*.swn
+*.swn
+*.un~
+*~

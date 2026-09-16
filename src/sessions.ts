@@ -8,24 +8,15 @@ interface StoredSession {
   access_token: string;
   refresh_token: string;
   expires_in: number;
-  issued_at: number; // Date.now() at save time
-}
 
-// Only what login actually returns before we strip id_token.
-// Deliberately no index signature here -- adding [key: string]: unknown
-// makes TS require the caller's type to *also* declare an index signature
-// to be assignable, which AuthTokenResponse doesn't (and doesn't need to).
-// Extra fields on whatever's passed in are still accepted at runtime;
-// they're just not required to be declared for the assignment to type-check.
 interface IncomingTokens {
   access_token: string;
   refresh_token: string;
   expires_in: number;
-  id_token?: string; // accepted but never persisted
+  id_token?: string; // accepted 
 }
 
 export function saveTokens(tokens: IncomingTokens) {
-  // id_token (and anything else) is intentionally dropped — only these three get persisted
   new Entry(SERVICE, 'access_token').setPassword(tokens.access_token);
   new Entry(SERVICE, 'refresh_token').setPassword(tokens.refresh_token);
   new Entry(SERVICE, 'meta').setPassword(
