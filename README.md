@@ -4,7 +4,7 @@ The Blacdisk CLI sits between your code and claude, uses proven and new techniqu
 
 Docs: https://www.blacdisk.com/docs/intro
 
-![Blacdisk Logo](https://www.blacdisk.com/blacdisk logo w text.png)
+![Blacdisk Logo](https://www.blacdisk.com/blacdisklogotext.png)
 
 ## 🤔Why Even Use This
 ### Why this exist
