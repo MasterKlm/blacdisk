@@ -83,7 +83,7 @@ async function ensureAnthropicApiKey() {
         }
         if (result.reason === "invalid") {
             console.error(`\n${result.message}`);
-            console.error("The saved Anthropic API key no longer works and needs to be updated.");
+            console.error("The saved Anthropic API key no longer works it may be expired and needs to be updated.");
             if (!process.stdin.isTTY) {
                 throw new Error("The saved Anthropic API key is invalid or expired, and no interactive terminal is available to prompt for a new one. " +
                     "Set the ANTHROPIC_API_KEY environment variable and retry.");
