@@ -3,7 +3,6 @@ import { checkBillingStatus, discoverEndpoints } from "./auth.js";
 import chalk from 'chalk';
 const SERVICE = 'blacdisk';
 export function saveTokens(tokens) {
-    // id_token (and anything else) is intentionally dropped — only these three get persisted
     new Entry(SERVICE, 'access_token').setPassword(tokens.access_token);
     new Entry(SERVICE, 'refresh_token').setPassword(tokens.refresh_token);
     new Entry(SERVICE, 'meta').setPassword(JSON.stringify({ expires_in: tokens.expires_in, issued_at: Date.now() }));
@@ -43,12 +42,10 @@ export async function getValidAccessToken() {
         return session.access_token;
     // expired — try refreshing
     try {
-        //@ts-ignore
-        const config = await discoverEndpoints(!process.env.n_ISSUER_URL);
+        const config = await discoverEndpoints(process.env.CLERK_ISSUER_URL);
         const res = await fetch(config.token_endpoint, {
             method: 'POST',
             headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-            //@ts-ignore
             body: new URLSearchParams({
                 grant_type: 'refresh_token',
                 refresh_token: session.refresh_token,

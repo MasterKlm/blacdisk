@@ -8,6 +8,9 @@ interface StoredSession {
   access_token: string;
   refresh_token: string;
   expires_in: number;
+  issued_at: number; 
+}
+  
 
 interface IncomingTokens {
   access_token: string;
@@ -62,18 +65,16 @@ export async function getValidAccessToken(): Promise<string | null> {
 
   // expired — try refreshing
   try {
-    //@ts-ignore
-    const config = await discoverEndpoints(!process.env.n_ISSUER_URL);
-    const res = await fetch(config.token_endpoint, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      //@ts-ignore
-      body: new URLSearchParams({
-        grant_type: 'refresh_token',
-        refresh_token: session.refresh_token,
-        client_id: process.env.CLERK_OAUTH_CLIENT_ID,
-      }),
-    });
+   const config = await discoverEndpoints(process.env.CLERK_ISSUER_URL!);
+  const res = await fetch(config.token_endpoint, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({
+      grant_type: 'refresh_token',
+      refresh_token: session.refresh_token,
+      client_id: process.env.CLERK_OAUTH_CLIENT_ID!,
+    }),
+  }); 
 
     if (!res.ok) {
       clearTokens();

@@ -114,17 +114,6 @@ export async function getCurrentUserId() {
     }
 }
 const BILLING_STATUS_ENDPOINT = 'https://www.blacdisk.com/api/billing-status';
-/**
- * Separate from isLoggedIn() on purpose -- isLoggedIn() only answers
- * "is this session valid," and billing status is a different question
- * (a perfectly logged-in user can still be out of free tokens with no
- * card on file). Call this wherever you actually need to know that,
- * rather than folding it into the session check.
- *
- * Returns null if the user isn't logged in, or if the check itself fails
- * (network error, server error, etc.) -- callers should treat null as
- * "couldn't determine billing status," not "definitely no payment method."
- */
 export async function checkBillingStatus() {
     const accessToken = await getValidAccessToken();
     if (!accessToken)
@@ -152,22 +141,16 @@ export async function requestCard(status) {
         `&customerEmail=${encodeURIComponent(status.email ?? '')}`;
     await open(checkoutUrl);
     console.log(chalk.dim('Waiting for checkout to complete...'));
-    // Poll checkBillingStatus() until hasPaymentMethod flips true (set by
-    // your Polar webhook once checkout succeeds), instead of killing the
-    // process. Bounded with a max wait so an abandoned browser tab doesn't
-    // hang the CLI forever.
     const POLL_INTERVAL_MS = 3000;
     const MAX_WAIT_MS = 10 * 60 * 1000; // 10 minutes
     const start = Date.now();
     while (Date.now() - start < MAX_WAIT_MS) {
-        await sleep(POLL_INTERVAL_MS); // must be awaited -- sleep() returns a promise, unawaited it does nothing
+        await sleep(POLL_INTERVAL_MS);
         const latest = await checkBillingStatus();
         if (latest?.hasPaymentMethod) {
             console.log(chalk.green('✔ Payment method added. Continuing...'));
             return latest;
         }
-        // latest === null means the check itself failed (network blip, etc.)
-        // -- keep polling rather than giving up on a transient error.
     }
     throw new Error('Timed out waiting for a payment method to be added. Run the command again once checkout is complete.');
 }

@@ -43,8 +43,6 @@ function askForPrompt(status) {
             console.log(chalk.yellow("Free Tokens Savings Remaining: ", status.freeTokensRemaining));
         console.log(hr);
         rl.question("\x1b[1m\x1b[34m> \x1b[0m", (prompt) => {
-            // Erase the line the user just typed (and the "> " prompt) so it
-            // doesn't stay printed on screen after Enter is pressed.
             readline.moveCursor(process.stdout, 0, -1);
             readline.clearLine(process.stdout, 0);
             console.log(hr);

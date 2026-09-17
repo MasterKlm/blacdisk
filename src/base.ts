@@ -19,7 +19,7 @@ const appCheckCustomProvider = new CustomProvider({
   getToken: async () => {
     const accessToken = await getValidAccessToken();
     if (!accessToken) {
-      throw new Error("Not logged in -- run `blacdisk` to login first.");
+      throw new Error("Not logged in -- run `blacdisk claude` to login first.");
     }
 
     const res = await fetch("https://www.blacdisk.com/api/app-check-token", {

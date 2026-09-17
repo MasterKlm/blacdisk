@@ -2,8 +2,6 @@ import path from 'node:path';
 import fs from 'node:fs';
 import { createRequire } from 'node:module';
 const require = createRequire(import.meta.url);
-// Maps process.platform + process.arch to { npm package name, binary filename }.
-// Extend this if you add more targets to your build matrix later.
 const PLATFORM_MAP = {
     'win32-x64': { pkg: '@masterklm/blacdisk-win32-x64', bin: 'blackdisk.exe' },
     'linux-x64': { pkg: '@masterklm/blacdisk-linux-x64', bin: 'blackdisk' },
@@ -18,10 +16,6 @@ export function resolveExecutablePath() {
     }
     let pkgDir;
     try {
-        // Resolves to the platform package's package.json, then we take its
-        // directory -- this works regardless of exact node_modules nesting,
-        // since it goes through Node's real module resolution rather than a
-        // hardcoded relative path.
         const pkgJsonPath = require.resolve(`${target.pkg}/package.json`);
         pkgDir = path.dirname(pkgJsonPath);
     }

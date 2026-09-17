@@ -12,7 +12,7 @@ const __dirname = path.dirname(__filename);
 const PACKAGE_ROOT = path.resolve(__dirname, "..");
 const ENV_PATH = path.join(PACKAGE_ROOT, ".env");
 
-dotenv.config({ path: ENV_PATH });
+dotenv.config({ path: ENV_PATH, quiet: true });
 
 
 

@@ -8,8 +8,6 @@ export const MODELS = [
     { key: '3', label: 'Claude Haiku 4.5', tag: 'claude-haiku-4-5-20251001' },
     { key: '4', label: 'Claude Fable 5', tag: 'claude-fable-5' },
 ];
-// Sonnet 5 (and Opus 4.8) default to "high" effort on the API/Claude Code.
-// xhigh and max are newer tiers above the default for the hardest tasks.
 const EFFORT_LEVELS = [
     { key: '1', label: 'Low', tag: 'low', blurb: 'Fastest, most token-efficient' },
     { key: '2', label: 'Medium', tag: 'medium', blurb: 'Balanced speed and quality' },
@@ -19,7 +17,6 @@ const EFFORT_LEVELS = [
 ];
 const DEFAULT_MODEL_KEY = '1';
 const DEFAULT_EFFORT_KEY = '3';
-// ---- Small rendering helpers --------------------------------------------
 const WIDTH = 56;
 function rule(char = '─') {
     return chalk.gray(char.repeat(WIDTH));
@@ -62,10 +59,6 @@ function renderSummary(modelTag, effortTag) {
         chalk.gray('│'));
     console.log(chalk.gray('└' + '─'.repeat(WIDTH - 2) + '┘\n'));
 }
-// ---- Mouse/trackpad ANSI filtering ---------------------------------------
-// Strips SGR (1006) and X10 mouse-tracking escape sequences from raw stdin
-// bytes before they ever reach readline, so trackpad/mouse events typed
-// into a prompt answer don't show up as garbage characters.
 function createFilteredStdin(source) {
     const filtered = new PassThrough();
     const onData = (chunk) => {
