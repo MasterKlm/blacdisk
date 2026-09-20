@@ -1,140 +1,198 @@
-# Stop burning Claude Code tokens and usage quickly
+# 🚀 Stop Burning Through Claude Code Tokens and Usage too quickly
 
-The Blacdisk CLI sits between your code and claude, uses proven and new techniques, such as code image context, filepath context compression, read tool limiting  to shrink input tokens up to 80% and a caveman-like skill to save up to 60% on output tokens. All in one tool.
+> **The Blacdisk CLI sits between your code and Claude**, using battle-tested and experimental techniques like code-to-image context, filepath context compression, read tool limiting, and a caveman-style skill to **shrink input tokens up to 80%** and **save up to 60% on output tokens**. All in one tool.
 
-Docs: https://www.blacdisk.com/docs/intro
+**📖 Docs:** [blacdisk.com/docs/intro](https://www.blacdisk.com/docs/intro)
 
-![Blacdisk Logo](https://www.blacdisk.com/blacdisklogotext.png)
+<p align="center">
+  <img src="https://www.blacdisk.com/blacdisklogotext.png" alt="Blacdisk Logo" width="400"/>
+</p>
 
-## 🤔Why Even Use This
-### Why this exist
+---
 
-Really this exist because hitting claude limits quickly is annoying and waiting for 5hr resets or buying more api credits sucks.
+## 🤔 Why Even Use This?
 
-**Blacdisk is essentially a token preprocessor that works with tokens, reducing them up to 80%
-before sending them to claude code to do the actual coding.**
+### The Problem
 
-This project exist based off the fact that most open source tools, 
-skills, plugins etc... That I have seen, with the exception of [pxpipe](https://github.com/teamchong/pxpipe), 
-mainly save tokens by usually tool calls or output 
-tokens. I think they avoid one of the main long term issue: the Code itself.
+Hitting Claude limits **sucks**. Waiting 5 hours for a reset? **Sucks more.** Buying extra API credits? **Painful.**
 
- 
-Skills like [caveman](https://github.com/JuliusBrussee/caveman) help reduce output
-tokens massively but unlike output tokens you can't just remove variables, or massively modify code to save on tokens without loosing the original intention of the code and confusing the model.
+Most open-source tools, skills, and plugins out there (with the exception of [pxpipe](https://github.com/teamchong/pxpipe)) only save tokens on **tool calls** or **output tokens**. They dodge the real long-term issue: **the code itself**.
 
-This is the original problem that brought the idea of blacdisk to life. If code tokens can be reduced and passed consistently through the context it can be an immediate token saving solution and a fix for long claude code sessions consuming a disgusting amount of tokens thanks to the context window.
+Skills like [caveman](https://github.com/JuliusBrussee/caveman) slash output tokens massively, but unlike output, you can't just rip out variables or mangle code to save tokens without losing the original intent and confusing the model.
 
- This project was inspired by Pxpipe. [ Pxpipe](https://github.com/teamchong/pxpipe) is one tool I've found that seeks to shrink code input tokens by converting code into text dense images at a optimized dimension to save on tokens. Major models use less tokens processing images than large text in codebases.
-This code-to-image solution and a few new ones that I've experimented with have been put into this one cli tool, Blacdisk. Reducing code input tokens up to 80% in this production package.
+**That's the exact problem Blacdisk was born to solve.**
 
-Although the core premise of Blacdisk is making your code use less
- input tokens, it goes beyond that. It is a all in one, simple to 
-use tool, combining all the best and compatible token-saving 
-techniques out there, including code-to-image, a caveman-like 
-skills called yapper, and various others some not disclosed here. 
+If code tokens can be reduced *and* passed consistently through context, you get an immediate token-saving solution and a fix for those disgusting, token-devouring Claude Code sessions.
 
-Here's how it works.
+> 💡 **Inspired by [Pxpipe](https://github.com/teamchong/pxpipe)**, which shrinks code input tokens by converting code into text-dense images at optimized dimensions. Major models use fewer tokens processing images than processing large codebases as text.
 
-### How it works
+Blacdisk takes that code-to-image approach, adds a few experimental tricks, and packs it all into **one CLI**.
 
-Here's how the blacdisk pipeline looks like from prompt to claude code.
-<div align="center">
-Blacdisk client requests a prompt from the user
+**Result: code input tokens reduced up to 80% in production.**
 
-⬇️
+But wait there's more. Blacdisk is an **all-in-one** tool that combines the best compatible token-saving techniques:
 
-client sends a request to cheaper models to select files relevant to the prompt.
+- 🖼️ **Code-to-image** conversion
+- 🗿 **Yapper** — a caveman-like skill for output savings
+- 🔧 **Various undisclosed methods** (some secrets stay secret)
 
-⬇️
+---
 
-client then sends the relevant files with code to the blacdisk core engine to select the optimal token saving techniques to use. It then runs the processes to reduce code input tokens.
+## ⚙️ How It Works
 
-⬇️
+Here's the Blacdisk pipeline, from prompt to Claude Code:
 
-User selects the claude model to open claude code with.
+```
+┌─────────────────────────────────────────────┐
+│  1. Blacdisk requests a prompt from you     │
+└─────────────────────┬───────────────────────┘
+                      ⬇️
+┌─────────────────────────────────────────────┐
+│  2. Sends request to cheaper models to      │
+│     select files relevant to your prompt    │
+└─────────────────────┬───────────────────────┘
+                      ⬇️
+┌─────────────────────────────────────────────┐
+│  3. Sends relevant files to the Blacdisk    │
+│     core engine → picks optimal token-      │
+│     saving techniques → runs the reduction  │
+└─────────────────────┬───────────────────────┘
+                      ⬇️
+┌─────────────────────────────────────────────┐
+│  4. You select the Claude model             │
+└─────────────────────┬───────────────────────┘
+                      ⬇️
+┌─────────────────────────────────────────────┐
+│  5. Blacdisk opens Claude Code, prefilled   │
+│     with your prompt, the yapper skill,     │
+│     and token-handling instructions         │
+└─────────────────────┬───────────────────────┘
+                      ⬇️
+┌─────────────────────────────────────────────┐
+│  6. Press Enter → optimized tokens go brrr  │
+└─────────────────────────────────────────────┘
+```
 
-⬇️
+---
 
-The Blacdisk client then opens claude code and prefills with the users original prompt, a caveman-like skill and instructions on how to handle the token saving changes and establish rules to save tokens effectively.
+## 📊 The Numbers
 
-⬇️
-
-User presses enter to begin prompt with optimized tokens
-
-</div>
-
-## 📊 The Numbers 
-| Project | Before (Code Input Tokens) | After | Saved | Prompt | Repo |
+| Project | Before | After | Saved | Prompt | Repo |
 |---|---:|---:|---:|---|---|
-| **UI Library in C** | 4.0k | 1.4k | **64%** | Add a button rounding feature | [**Repo**](https://github.com/MasterKlm/crumbui) |
-| **2D OpenGL C++ Game Engine** | 6.3k | 2.1k | **67%** | A Circle Class to draw circles | [**Repo**](https://github.com/MasterKlm/starisk) |
-| **Python Space Invader** | 6.6k | 1.8k | **73%** | Add a teleporting gun to let t... | [**Repo**](https://github.com/MasterKlm/spacehelm) |
+| **UI Library in C** | 4.0k | 1.4k | 🟢 **64%** | Add a button rounding feature | [Repo](https://github.com/MasterKlm/crumbui) |
+| **2D OpenGL C++ Game Engine** | 6.3k | 2.1k | 🟢 **67%** | A Circle Class to draw circles | [Repo](https://github.com/MasterKlm/starisk) |
+| **Python Space Invader** | 6.6k | 1.8k | 🟢 **73%** | Add a teleporting gun... | [Repo](https://github.com/MasterKlm/spacehelm) |
 
-These are repos of varying sizes and results may vary as a result when used since workloads are different.
+> ⚠️ Results vary by workload. These are real repos of varying sizes, since workloads differ.
 
-## Yapper (Caveman-like skill)
+---
 
-This skill is essentially a yapper clone so most caveman functionality works out of the box. This skill gets copied into your project claude skills when Blacdisk is run for the first time. This skill get added for each prompt ran with Blacdisk to give you additional output token savings.
+## 🗿 Yapper (The Caveman-Like Skill)
 
-## The Bad news & Honest Thoughts
-This is not opensource, this is a freemium product. I am committed to saving tokens though, so I wanted the pricing
- to encourage project improvement and actually saving users more
- tokens. That's why the pricing is based on how many tokens it
- saves you per request. We only get paid if we save you tokens
- and money. Good news is that the first 1 Million tokens saved
- are free. No card required. Based on my experience as the creator using it during
- testing, users can expect to save around 3000-6000 per prompt depending on the workload, so burning through the free tokens should take  a while.
+Yapper is essentially a **caveman clone**, most caveman functionality works right out of the box.
 
+- ✅ Gets copied into your project's Claude skills on first run
+- ✅ Added to every Blacdisk prompt for extra output token savings
+- ✅ Zero configuration required
 
-**Here's some caveats**
+---
 
-As mentioned before workloads may differ and thus results, this does not promise consistent 80% savings but at least near consistent 60-70% savings.
+## 😬 The Bad News & Honest Thoughts
 
-**Fail-safe**: If the Blacdisk engine calculates that it can't save you any tokens and you would be better off using claude normally, it will just pass your prompt straight to claude with only yapper attach to the prompt to atleast save you some output tokens.
+**This is not open source. It's a freemium product.**
 
+But here's the thing, I'm committed to saving tokens. So the pricing is designed to **encourage project improvement and actually save you more tokens**.
 
-# Simple Setup
-## Installation
+### 💰 Pricing Philosophy
 
-**#1**
+> **We only get paid if we save you tokens and money.**
 
-Copy, paste and run this command in your terminal to install Blacdisk. Requires Node on your PC: [**https://nodejs.org/en/download**](https://nodejs.org/en/download).
+- 🎁 **First 1 Million tokens saved = FREE**
+- 💳 **No card required**
+- 📉 **Price drops as we get more users and save more tokens**
+- ✅**Output token savings are free**
+
+Based on my testing as the creator, users can expect to save **~3,000–6,000 tokens per prompt** depending on workload. Burning through the free tier should take a while.
+
+### ⚠️ Caveats
+
+- Results vary by workload, no promise of consistent 80% savings, but expect **near-consistent 60–70%**
+- **Fail-safe:** If Blacdisk calculates it can't save you tokens, it passes your prompt straight to Claude with only yapper attached, so you at least save some output tokens
+
+---
+
+## 🛠️ Simple Setup
+
+### Installation
+
+**Step 1 — Install Blacdisk**
+
+Requires [Node.js](https://nodejs.org/en/download).
 
 ```bash
 npm i -g blacdisk
 ```
 
-**#2**
+**Step 2 — Grant Claude access (first time only)**
 
-If you haven't given claude access to this project. Run Claude once and grant folder access. If you don't have Claude Code, Blacdisk installs it automatically. Just run `claude` in your terminal and approve access to claude code, then restart Blacdisk to start saving tokens.
+If you haven't given Claude access to your project, run Claude once and approve folder access. Don't have Claude Code? Blacdisk installs it automatically.
 
 ```bash
 claude
 ```
 
-**#3**
+Then restart Blacdisk to start saving.
 
-Go to your project folder and run `blacdisk claude` in the terminal. Login and keep prompting like usual and we handle the rest. Press Enter to send the prompt and let Claude build without burning usage quickly.
+**Step 3 — Run Blacdisk in your project**
 
 ```bash
 cd /my-project
 blacdisk claude
 ```
 
-**#4**
+Login, keep prompting like usual, and we handle the rest. **Press Enter** to send your prompt and let Claude build without burning usage.
 
-Once Claude is done with the prompt you gave it, cancel Claude Code and run Blacdisk again to ensure consistent token savings for every prompt you make.
+**Step 4 — Repeat for consistent savings**
+
+Once Claude finishes your prompt, cancel Claude Code and run Blacdisk again for every new prompt.
 
 ```bash
 blacdisk claude
 ```
 
-## Pricing
-Check out the [Blacdisk pricing page](https://www.blacdisk.com/pricing) for details on pricing. No card needed to get started.
-As we get more users and save more tokens, The price will drop.
+---
 
-## Token Count
-Blacdisk uses the anthropic token count api to calculate tokens used, for billing, token reduction and prints them in the console before passing the prompt to claude.
-## Join the Team
-If you would like to discuss working on this and making ai cheaper to use. You can email me at koketso@blacdisk.com.
+## 💵 Pricing
+
+Check out the [**Blacdisk pricing page**](https://www.blacdisk.com/pricing) for details.
+
+> 🎉 **No card needed to get started.**
+
+As we grow and save more tokens, **the price drops.**
+
+---
+
+## 🔢 Token Count
+
+Blacdisk uses the **Anthropic token count API** to calculate tokens used for:
+
+- 📊 Billing
+- 📉 Token reduction
+- 🖨️ Printing token counts in your console *before* passing the prompt to Claude
+
+---
+
+## 🤝 Join the Team
+
+Want to discuss working on this and making AI cheaper to use?
+
+📧 **Email:** [koketso@blacdisk.com](mailto:koketso@blacdisk.com)
+
+---
+
+<p align="center">
+  <strong>Stop burning tokens. Start building.</strong><br/>
+  <a href="https://www.blacdisk.com/docs/intro">📖 Docs</a> •
+  <a href="https://www.blacdisk.com/pricing">💵 Pricing</a> •
+  <a href="mailto:koketso@blacdisk.com">✉️ Contact</a>
+</p>
