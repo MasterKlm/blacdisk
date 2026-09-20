@@ -78,7 +78,7 @@ These are repos of varying sizes and results may vary as a result when used sinc
 This skill is essentially a yapper clone so most caveman functionality works out of the box. This skill gets copied into your project claude skills when Blacdisk is run for the first time. This skill get added for each prompt ran with Blacdisk to give you additional output token savings.
 
 ## The Bad news & Honest Thoughts
-This is not opensource, this is a freemium product. I've spent 4 months and 10-15hr days coding this so I decided to make this an actual product. I am commited to saving tokens though so I wanted the pricing
+This is not opensource, this is a freemium product. I am committed to saving tokens though, so I wanted the pricing
  to encourage project improvement and actually saving users more
  tokens. That's why the pricing is based on how many tokens it
  saves you per request. We only get paid if we save you tokens
